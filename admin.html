@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Student Management</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<style>
+    body { font-family: 'Segoe UI', sans-serif; display:flex; flex-direction:column; align-items:center; gap:20px; padding:20px; background:#f0f2f5; min-height:100vh;}
+    .container { width:100%; max-width:700px; padding:25px; border-radius:12px; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+    h2 { margin-bottom:20px; color:#333; font-size:1.5rem; border-bottom:3px solid #007bff; padding-bottom:5px; }
+    ul { list-style:none; padding:0; }
+    .student-item { padding:15px; margin-bottom:10px; background:#e9f5ff; border-left:5px solid #007bff; border-radius:6px; display:flex; justify-content:space-between; align-items:center; }
+    .student-info { flex:1; }
+    .student-info strong { display:block; font-size:1.1rem; color:#004d99; margin-bottom:5px; }
+    .student-info span { display:block; font-size:0.9rem; color:#666; }
+    button { margin-left:10px; padding:6px 12px; border:none; border-radius:5px; cursor:pointer; font-size:0.9rem; }
+    .verify-btn { background:#28a745; color:white; }
+    .verify-btn.verified { background:#6c757d; cursor:not-allowed; }
+    .delete-btn { background:#dc3545; color:white; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🧑‍🎓 Admin - Student Management</h2>
+    <ul id="studentList">
+        <li>Loading students...</li>
+    </ul>
+</div>
+
+<script>
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyAvQJ5ts2sLNbroz4h1Gcj6Lwq8UNu5KBs",
+        authDomain: "studentinfo-3b29f.firebaseapp.com",
+        databaseURL: "https://studentinfo-3b29f-default-rtdb.firebaseio.com",
+        projectId: "studentinfo-3b29f",
+        storageBucket: "studentinfo-3b29f.firebasestorage.app",
+        messagingSenderId: "890030823969",
+        appId: "1:890030823969:web:1121ffbdc0602e74c32160",
+        measurementId: "G-N50H4H4PS6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const studentsRef = database.ref('students'); // Path in Realtime Database
+
+    const studentList = document.getElementById('studentList');
+
+    // --- Render a single student in admin view ---
+    function renderStudentAdmin(studentId, student) {
+        const li = document.createElement('li');
+        li.className = 'student-item';
+        li.id = `student-${studentId}`;
+
+        // Student info section
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'student-info';
+        infoDiv.innerHTML = `
+            <strong>${student.name}</strong>
+            <span>ID: ${student.studentId} | Major: ${student.major}</span>
+            <span>Email: ${student.email}</span>
+            <span>Status: ${student.verified ? '✅ Verified' : '❌ Not Verified'}</span>
+        `;
+        li.appendChild(infoDiv);
+
+        // Buttons
+        const btnDiv = document.createElement('div');
+
+        // Verify button
+        const verifyBtn = document.createElement('button');
+        verifyBtn.className = 'verify-btn';
+        verifyBtn.textContent = student.verified ? 'Verified' : 'Verify';
+        if (student.verified) verifyBtn.classList.add('verified');
+        verifyBtn.disabled = !!student.verified;
+        verifyBtn.addEventListener('click', () => {
+            studentsRef.child(studentId).update({ verified: true })
+                .then(() => { verifyBtn.textContent = 'Verified'; verifyBtn.classList.add('verified'); verifyBtn.disabled = true; })
+                .catch(err => alert('Error verifying: ' + err.message));
+        });
+        btnDiv.appendChild(verifyBtn);
+
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => {
+            if (confirm(`Are you sure you want to delete ${student.name}?`)) {
+                studentsRef.child(studentId).remove().catch(err => alert('Error deleting: ' + err.message));
+            }
+        });
+        btnDiv.appendChild(deleteBtn);
+
+        li.appendChild(btnDiv);
+        studentList.appendChild(li);
+    }
+
+    // --- Listen for realtime updates ---
+    studentsRef.on('value', snapshot => {
+        studentList.innerHTML = ''; // Clear current list
+        if (!snapshot.exists()) {
+            studentList.innerHTML = '<li>No students found.</li>';
+            return;
+        }
+
+        snapshot.forEach(childSnap => {
+            renderStudentAdmin(childSnap.key, childSnap.val());
+        });
+    }, error => {
+        console.error('Error reading Firebase data:', error);
+        studentList.innerHTML = `<li style="background:#ffebeb; border-left-color:#dc3545;">
+            Error loading data: ${error.message}
+        </li>`;
+    });
+
+</script>
+
+</body>
+</html>
