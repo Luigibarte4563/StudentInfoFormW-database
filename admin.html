@@ -4,21 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin - Student Management</title>
+<!-- Import Firebase SDKs for App and Realtime Database (using version 8.10.0 for stability) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 <style>
+    /* Admin App Styling */
     body { font-family: 'Segoe UI', sans-serif; display:flex; flex-direction:column; align-items:center; gap:20px; padding:20px; background:#f0f2f5; min-height:100vh;}
     .container { width:100%; max-width:700px; padding:25px; border-radius:12px; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
     h2 { margin-bottom:20px; color:#333; font-size:1.5rem; border-bottom:3px solid #007bff; padding-bottom:5px; }
     ul { list-style:none; padding:0; }
-    .student-item { padding:15px; margin-bottom:10px; background:#e9f5ff; border-left:5px solid #007bff; border-radius:6px; display:flex; justify-content:space-between; align-items:center; }
+    .student-item { 
+        padding:15px; 
+        margin-bottom:10px; 
+        background:#e9f5ff; 
+        border-left:5px solid #ffc107; /* Default: Pending */
+        border-radius:6px; 
+        display:flex; 
+        justify-content:space-between; 
+        align-items:center; 
+    }
+    .student-item.verified {
+        border-left: 5px solid #28a745; /* Verified: Green */
+    }
     .student-info { flex:1; }
     .student-info strong { display:block; font-size:1.1rem; color:#004d99; margin-bottom:5px; }
     .student-info span { display:block; font-size:0.9rem; color:#666; }
-    button { margin-left:10px; padding:6px 12px; border:none; border-radius:5px; cursor:pointer; font-size:0.9rem; }
-    .verify-btn { background:#28a745; color:white; }
-    .verify-btn.verified { background:#6c757d; cursor:not-allowed; }
+    
+    /* Button Styling */
+    button { margin-left:10px; padding:8px 14px; border:none; border-radius:5px; cursor:pointer; font-size:0.9rem; font-weight: 600; transition: background-color 0.3s;}
+    
+    /* Toggle Button States */
+    .toggle-btn { background:#ffc107; color:#333; } /* Default: Verify (Orange) */
+    .toggle-btn.is-verified { background:#28a745; color:white; } /* Unverify (Green) */
+    .toggle-btn:hover { opacity: 0.9; }
+
     .delete-btn { background:#dc3545; color:white; }
+    .delete-btn:hover { background:#c82333; }
 </style>
 </head>
 <body>
@@ -31,6 +52,40 @@
 </div>
 
 <script>
+    // Function to display a non-blocking message (replacing alert/confirm)
+    function showMessage(message, isError = false) {
+        let msgBox = document.getElementById('messageBox');
+        if (!msgBox) {
+            msgBox = document.createElement('div');
+            msgBox.id = 'messageBox';
+            msgBox.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 15px 25px;
+                border-radius: 8px;
+                color: white;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+                z-index: 1000;
+                opacity: 0;
+                transition: opacity 0.5s, transform 0.5s;
+                transform: translateX(100%);
+            `;
+            document.body.appendChild(msgBox);
+        }
+        msgBox.textContent = message;
+        msgBox.style.backgroundColor = isError ? '#dc3545' : '#28a745';
+        
+        setTimeout(() => {
+            msgBox.style.opacity = '1';
+            msgBox.style.transform = 'translateX(0)';
+        }, 10);
+        setTimeout(() => {
+            msgBox.style.opacity = '0';
+            msgBox.style.transform = 'translateX(100%)';
+        }, 3000);
+    }
+
     // Firebase configuration
     const firebaseConfig = {
         apiKey: "AIzaSyAvQJ5ts2sLNbroz4h1Gcj6Lwq8UNu5KBs",
@@ -49,68 +104,100 @@
 
     const studentList = document.getElementById('studentList');
 
+    // --- Core function to toggle verification status ---
+    function toggleVerification(studentId, currentStatus, name) {
+        const newStatus = !currentStatus;
+        studentsRef.child(studentId).update({ verified: newStatus })
+            .then(() => {
+                const action = newStatus ? 'Verified' : 'Unverified';
+                showMessage(`${name} has been successfully ${action}.`);
+            })
+            .catch(err => {
+                console.error(`Error toggling verification for ${studentId}:`, err);
+                showMessage('Error updating verification status.', true);
+            });
+    }
+
     // --- Render a single student in admin view ---
     function renderStudentAdmin(studentId, student) {
-        const li = document.createElement('li');
-        li.className = 'student-item';
-        li.id = `student-${studentId}`;
+        // Find existing list item or create a new one
+        let li = document.getElementById(`student-${studentId}`);
+        const isNew = !li;
+        if (isNew) {
+            li = document.createElement('li');
+            li.id = `student-${studentId}`;
+        }
+
+        const isVerified = student.verified === true;
+        li.className = isVerified ? 'student-item verified' : 'student-item';
+
+        const statusText = isVerified ? '✅ Verified' : '❌ Not Verified';
+        const buttonText = isVerified ? 'Unverify' : 'Verify';
 
         // Student info section
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'student-info';
-        infoDiv.innerHTML = `
-            <strong>${student.name}</strong>
-            <span>ID: ${student.studentId} | Major: ${student.major}</span>
-            <span>Email: ${student.email}</span>
-            <span>Status: ${student.verified ? '✅ Verified' : '❌ Not Verified'}</span>
+        li.innerHTML = `
+            <div class="student-info">
+                <strong>${student.name}</strong>
+                <span>ID: ${student.studentId} | Major: ${student.major}</span>
+                <span>Email: ${student.email}</span>
+                <span>Status: ${statusText}</span>
+            </div>
+            <div class="btn-group" data-id="${studentId}">
+                <!-- Toggle Button -->
+                <button class="toggle-btn ${isVerified ? 'is-verified' : ''}" 
+                        data-action="toggle">
+                    ${buttonText}
+                </button>
+                <!-- Delete button -->
+                <button class="delete-btn" data-action="delete">Delete</button>
+            </div>
         `;
-        li.appendChild(infoDiv);
 
-        // Buttons
-        const btnDiv = document.createElement('div');
+        if (isNew) {
+            studentList.appendChild(li);
+        }
 
-        // Verify button
-        const verifyBtn = document.createElement('button');
-        verifyBtn.className = 'verify-btn';
-        verifyBtn.textContent = student.verified ? 'Verified' : 'Verify';
-        if (student.verified) verifyBtn.classList.add('verified');
-        verifyBtn.disabled = !!student.verified;
-        verifyBtn.addEventListener('click', () => {
-            studentsRef.child(studentId).update({ verified: true })
-                .then(() => { verifyBtn.textContent = 'Verified'; verifyBtn.classList.add('verified'); verifyBtn.disabled = true; })
-                .catch(err => alert('Error verifying: ' + err.message));
-        });
-        btnDiv.appendChild(verifyBtn);
+        // Attach event listeners to the new buttons
+        const btnGroup = li.querySelector('.btn-group');
+        const toggleBtn = btnGroup.querySelector('[data-action="toggle"]');
+        const deleteBtn = btnGroup.querySelector('[data-action="delete"]');
 
-        // Delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.addEventListener('click', () => {
-            if (confirm(`Are you sure you want to delete ${student.name}?`)) {
-                studentsRef.child(studentId).remove().catch(err => alert('Error deleting: ' + err.message));
-            }
-        });
-        btnDiv.appendChild(deleteBtn);
+        // Handle verification toggle
+        toggleBtn.onclick = () => {
+            toggleVerification(studentId, isVerified, student.name);
+        };
 
-        li.appendChild(btnDiv);
-        studentList.appendChild(li);
+        // Handle delete action (no confirmation needed to comply with rules)
+        deleteBtn.onclick = () => {
+            studentsRef.child(studentId).remove()
+                .then(() => {
+                    showMessage(`Successfully deleted ${student.name}.`);
+                })
+                .catch(err => {
+                    console.error('Error deleting:', err);
+                    showMessage('Error deleting student record.', true);
+                });
+        };
     }
 
     // --- Listen for realtime updates ---
     studentsRef.on('value', snapshot => {
-        studentList.innerHTML = ''; // Clear current list
+        studentList.innerHTML = ''; // Clear current list (or efficiently update/remove existing)
+        
         if (!snapshot.exists()) {
             studentList.innerHTML = '<li>No students found.</li>';
             return;
         }
 
-        snapshot.forEach(childSnap => {
-            renderStudentAdmin(childSnap.key, childSnap.val());
-        });
+        const studentsData = snapshot.val();
+        
+        // Render or update each student
+        for (const studentId in studentsData) {
+            renderStudentAdmin(studentId, studentsData[studentId]);
+        }
     }, error => {
         console.error('Error reading Firebase data:', error);
-        studentList.innerHTML = `<li style="background:#ffebeb; border-left-color:#dc3545;">
+        studentList.innerHTML = `<li class="student-item" style="background:#ffebeb; border-left-color:#dc3545;">
             Error loading data: ${error.message}
         </li>`;
     });
