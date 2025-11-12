@@ -91,22 +91,6 @@ To access the admin view:
 
 ---
 
-## 📁 Project Structure
-
-```
-StudentInfoFormW-database/
-│
-├── index.html          # Main page with student form
-├── admin.html          # Admin interface
-├── firebase-config.js  # Firebase setup file
-├── script.js           # Form logic and database functions
-├── admin.js            # Admin-specific logic
-├── style.css           # Custom styles
-└── README.md           # Documentation
-```
-
----
-
 ## 💡 Future Improvements
 
 * Add authentication for admin users
