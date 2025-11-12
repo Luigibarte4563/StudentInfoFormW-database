@@ -1,9 +1,3 @@
-Nice 👍 that looks like a clean and informative **README** for your project!
-
-Here’s a slightly improved version you can use directly for your GitHub repo — it adds structure, formatting polish, and instructions for both **users** and **admins**:
-
----
-
 # 🎓 StudentInfoFormW-database
 
 📍 **Live Demo:** [View App Here](https://luigibarte4563.github.io/StudentInfoFormW-database/index.html)
