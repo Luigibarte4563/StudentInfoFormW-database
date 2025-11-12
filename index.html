@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Info Submission and Public List</title>
+    <title>Student Info Submission and Public List (Read-Only Status)</title>
     <!-- Import Firebase SDKs for App and Realtime Database (using version 8.10.0 for stability) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -59,7 +59,7 @@
             border-color: #007bff;
             box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
         }
-        button {
+        button[type="submit"] {
             background-color: #007bff;
             color: white;
             padding: 12px 20px;
@@ -70,12 +70,12 @@
             font-size: 1rem;
             transition: background-color 0.3s, transform 0.1s;
         }
-        button:hover {
+        button[type="submit"]:hover {
             background-color: #0056b3;
             transform: translateY(-1px);
         }
 
-        /* List Styling */
+        /* List Styling & Verification Status */
         #studentList {
             list-style: none;
             padding: 0;
@@ -84,9 +84,13 @@
             padding: 15px;
             margin-bottom: 10px;
             background-color: #e9f5ff;
-            border-left: 5px solid #007bff;
+            border-left: 5px solid #ffc107; /* Default: Pending (Yellow/Orange) */
             border-radius: 6px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .student-item.verified {
+            border-left: 5px solid #28a745; /* Verified (Green) */
+            background-color: #e9fff5;
         }
         .student-item strong {
             display: block;
@@ -98,6 +102,23 @@
             display: block;
             font-size: 0.9rem;
             color: #666;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            margin-top: 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .status-verified {
+            background-color: #28a745;
+            color: white;
+        }
+        .status-pending {
+            background-color: #ffc107;
+            color: #333;
         }
 
         /* Responsiveness */
@@ -136,7 +157,7 @@
 
     <!-- 2. Already Submitted List Side (Public Display) -->
     <div class="container list-container">
-        <h2>✅ Public Enrollment List</h2>
+        <h2>✅ Public Enrollment List (Status: Read-Only)</h2>
         <ul id="studentList">
             <!-- Student data will be loaded here by JavaScript -->
             <li>Loading submitted students in real-time...</li>
@@ -146,7 +167,6 @@
     <script>
         // Use a simple custom message box mechanism instead of alert()
         function showMessage(message, isError = false) {
-            const listContainer = document.querySelector('.list-container');
             let msgBox = document.getElementById('messageBox');
             if (!msgBox) {
                 msgBox = document.createElement('div');
@@ -195,85 +215,108 @@
             measurementId: "G-N50H4H4PS6"
         };
 
+        let studentsRef;
+
         try {
             const app = firebase.initializeApp(firebaseConfig);
             const database = app.database();
             // We use 'students' as the public collection path in the Realtime Database
-            const studentsRef = database.ref('students'); 
-
-            // --- 1. Form Submission Logic ---
-            document.getElementById('studentForm').addEventListener('submit', function(e) {
-                e.preventDefault(); 
-
-                const name = document.getElementById('name').value.trim();
-                const studentId = document.getElementById('studentId').value.trim();
-                const email = document.getElementById('email').value.trim();
-                const major = document.getElementById('major').value.trim();
-
-                if (!name || !studentId || !email || !major) {
-                    showMessage('Please fill in all fields.', true);
-                    return;
-                }
-
-                // Create a student object
-                const studentData = {
-                    name: name,
-                    studentId: studentId,
-                    email: email,
-                    major: major,
-                    timestamp: new Date().toISOString()
-                };
-
-                // Save data to Firebase Realtime Database
-                studentsRef.push(studentData)
-                    .then(() => {
-                        showMessage('Student data submitted successfully!');
-                        document.getElementById('studentForm').reset(); // Clear the form
-                    })
-                    .catch((error) => {
-                        console.error('Error submitting data: ', error);
-                        showMessage('Error submitting data. Check console.', true);
-                    });
-            });
-
-            // --- 2. Real-Time List Display Logic ---
-            const studentListElement = document.getElementById('studentList');
-
-            // Listen for value changes at the 'students' reference
-            studentsRef.on('value', (snapshot) => {
-                studentListElement.innerHTML = ''; // Clear the current list
-
-                if (!snapshot.exists()) {
-                    studentListElement.innerHTML = '<li class="student-item">No students have been enrolled yet.</li>';
-                    return;
-                }
-
-                // Iterate through the snapshot (the collection of all students)
-                snapshot.forEach((childSnapshot) => {
-                    const student = childSnapshot.val();
-                    const listItem = document.createElement('li');
-                    listItem.className = 'student-item';
-                    
-                    // Format the display content
-                    listItem.innerHTML = `
-                        <strong>${student.name}</strong>
-                        <span>ID: ${student.studentId} | Major: ${student.major}</span>
-                        <span>Email: ${student.email}</span>
-                    `;
-                    
-                    studentListElement.appendChild(listItem);
-                });
-            }, (error) => {
-                console.error("Error reading database:", error);
-                studentListElement.innerHTML = `<li class="student-item" style="background-color:#ffebeb; border-left-color:#dc3545;">
-                    Error loading data: ${error.message}. Please check your database rules.
-                </li>`;
-            });
+            studentsRef = database.ref('students'); 
 
         } catch (e) {
             console.error("Firebase Initialization Error:", e);
-            showMessage("Initialization failed. Check API keys in the code.", true);
+            const listElement = document.getElementById('studentList');
+            if (listElement) {
+                 listElement.innerHTML = `<li class="student-item" style="background-color:#ffebeb; border-left-color:#dc3545;">
+                    Initialization failed. Check console for details.
+                </li>`;
+            }
+            showMessage("Initialization failed. Check console.", true);
         }
+
+        // --- 1. Form Submission Logic ---
+        document.getElementById('studentForm').addEventListener('submit', function(e) {
+            e.preventDefault(); 
+            if (!studentsRef) return; // Guard clause if initialization failed
+
+            const name = document.getElementById('name').value.trim();
+            const studentId = document.getElementById('studentId').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const major = document.getElementById('major').value.trim();
+
+            if (!name || !studentId || !email || !major) {
+                showMessage('Please fill in all fields.', true);
+                return;
+            }
+
+            // Create a student object, default 'verified' to false
+            const studentData = {
+                name: name,
+                studentId: studentId,
+                email: email,
+                major: major,
+                verified: false, // New field, defaults to pending
+                timestamp: new Date().toISOString()
+            };
+
+            // Save data to Firebase Realtime Database
+            studentsRef.push(studentData)
+                .then(() => {
+                    showMessage('Student data submitted successfully! Status is Pending.');
+                    document.getElementById('studentForm').reset(); // Clear the form
+                })
+                .catch((error) => {
+                    console.error('Error submitting data: ', error);
+                    showMessage('Error submitting data. Check console.', true);
+                });
+        });
+
+        // --- 2. Real-Time List Display Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const studentListElement = document.getElementById('studentList');
+
+            if (studentsRef) {
+                // Listen for value changes at the 'students' reference
+                studentsRef.on('value', (snapshot) => {
+                    studentListElement.innerHTML = ''; // Clear the current list
+
+                    if (!snapshot.exists()) {
+                        studentListElement.innerHTML = '<li class="student-item">No students have been enrolled yet.</li>';
+                        return;
+                    }
+
+                    // Iterate through the snapshot (the collection of all students)
+                    snapshot.forEach((childSnapshot) => {
+                        const student = childSnapshot.val();
+                        // Check the verified status (defaults to false if not set/old data)
+                        const isVerified = student.verified === true; 
+
+                        const listItem = document.createElement('li');
+                        // Apply the correct class for styling the border color
+                        listItem.className = isVerified ? 'student-item verified' : 'student-item';
+                        
+                        // Set up the status badge for display
+                        const badgeClass = isVerified ? 'status-verified' : 'status-pending';
+                        const badgeText = isVerified ? 'VERIFIED ✅' : 'PENDING 🟡';
+
+                        // Format the display content
+                        listItem.innerHTML = `
+                            <strong>${student.name}</strong>
+                            <span>ID: ${student.studentId} | Major: ${student.major}</span>
+                            <span>Email: ${student.email}</span>
+                            <span class="status-badge ${badgeClass}">${badgeText}</span>
+                        `;
+                        
+                        studentListElement.appendChild(listItem);
+                    });
+                }, (error) => {
+                    console.error("Error reading database:", error);
+                    studentListElement.innerHTML = `<li class="student-item" style="background-color:#ffebeb; border-left-color:#dc3545;">
+                        Error loading data: ${error.message}. Please check your database connection.
+                    </li>`;
+                });
+            }
+        });
     </script>
 </body>
 </html>
