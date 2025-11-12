@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Info Submission and Public List</title>
+    <!-- Import Firebase SDKs for App and Realtime Database (using version 8.10.0 for stability) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        /* General Styling and Layout */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            background-color: #f0f2f5;
+            min-height: 100vh;
+        }
+        .container {
+            flex: 1;
+            padding: 25px;
+            border-radius: 12px;
+            background-color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+        }
+        .list-container {
+            max-width: 700px;
+        }
+        h2 {
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        /* Form Styling */
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.95rem;
+        }
+        input[type="text"], input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            margin-top: 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        /* List Styling */
+        #studentList {
+            list-style: none;
+            padding: 0;
+        }
+        .student-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #e9f5ff;
+            border-left: 5px solid #007bff;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .student-item strong {
+            display: block;
+            font-size: 1.1rem;
+            color: #004d99;
+            margin-bottom: 5px;
+        }
+        .student-item span {
+            display: block;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                gap: 30px;
+            }
+            .container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Submission Form Side -->
+    <div class="container form-container">
+        <h2>🧑‍🎓 Student Enrollment Form</h2>
+        <form id="studentForm">
+            <label for="name">Full Name:</label>
+            <input type="text" id="name" required>
+
+            <label for="studentId">Student ID:</label>
+            <input type="text" id="studentId" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" required>
+
+            <label for="major">Major/Program:</label>
+            <input type="text" id="major" required>
+
+            <button type="submit">Submit Enrollment</button>
+        </form>
+    </div>
+
+    <!-- 2. Already Submitted List Side (Public Display) -->
+    <div class="container list-container">
+        <h2>✅ Public Enrollment List</h2>
+        <ul id="studentList">
+            <!-- Student data will be loaded here by JavaScript -->
+            <li>Loading submitted students in real-time...</li>
+        </ul>
+    </div>
+
+    <script>
+        // Use a simple custom message box mechanism instead of alert()
+        function showMessage(message, isError = false) {
+            const listContainer = document.querySelector('.list-container');
+            let msgBox = document.getElementById('messageBox');
+            if (!msgBox) {
+                msgBox = document.createElement('div');
+                msgBox.id = 'messageBox';
+                msgBox.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    padding: 15px 25px;
+                    border-radius: 8px;
+                    color: white;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: opacity 0.5s, transform 0.5s;
+                    transform: translateX(100%);
+                `;
+                document.body.appendChild(msgBox);
+            }
+
+            msgBox.textContent = message;
+            msgBox.style.backgroundColor = isError ? '#dc3545' : '#28a745';
+            
+            // Show the message
+            setTimeout(() => {
+                msgBox.style.opacity = '1';
+                msgBox.style.transform = 'translateX(0)';
+            }, 10);
+
+            // Hide the message after 3 seconds
+            setTimeout(() => {
+                msgBox.style.opacity = '0';
+                msgBox.style.transform = 'translateX(100%)';
+            }, 3000);
+        }
+
+        // --- Firebase Configuration and Initialization ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAvQJ5ts2sLNbroz4h1Gcj6Lwq8UNu5KBs",
+            authDomain: "studentinfo-3b29f.firebaseapp.com",
+            databaseURL: "https://studentinfo-3b29f-default-rtdb.firebaseio.com",
+            projectId: "studentinfo-3b29f",
+            storageBucket: "studentinfo-3b29f.firebasestorage.app",
+            messagingSenderId: "890030823969",
+            appId: "1:890030823969:web:1121ffbdc0602e74c32160",
+            measurementId: "G-N50H4H4PS6"
+        };
+
+        try {
+            const app = firebase.initializeApp(firebaseConfig);
+            const database = app.database();
+            // We use 'students' as the public collection path in the Realtime Database
+            const studentsRef = database.ref('students'); 
+
+            // --- 1. Form Submission Logic ---
+            document.getElementById('studentForm').addEventListener('submit', function(e) {
+                e.preventDefault(); 
+
+                const name = document.getElementById('name').value.trim();
+                const studentId = document.getElementById('studentId').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const major = document.getElementById('major').value.trim();
+
+                if (!name || !studentId || !email || !major) {
+                    showMessage('Please fill in all fields.', true);
+                    return;
+                }
+
+                // Create a student object
+                const studentData = {
+                    name: name,
+                    studentId: studentId,
+                    email: email,
+                    major: major,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Save data to Firebase Realtime Database
+                studentsRef.push(studentData)
+                    .then(() => {
+                        showMessage('Student data submitted successfully!');
+                        document.getElementById('studentForm').reset(); // Clear the form
+                    })
+                    .catch((error) => {
+                        console.error('Error submitting data: ', error);
+                        showMessage('Error submitting data. Check console.', true);
+                    });
+            });
+
+            // --- 2. Real-Time List Display Logic ---
+            const studentListElement = document.getElementById('studentList');
+
+            // Listen for value changes at the 'students' reference
+            studentsRef.on('value', (snapshot) => {
+                studentListElement.innerHTML = ''; // Clear the current list
+
+                if (!snapshot.exists()) {
+                    studentListElement.innerHTML = '<li class="student-item">No students have been enrolled yet.</li>';
+                    return;
+                }
+
+                // Iterate through the snapshot (the collection of all students)
+                snapshot.forEach((childSnapshot) => {
+                    const student = childSnapshot.val();
+                    const listItem = document.createElement('li');
+                    listItem.className = 'student-item';
+                    
+                    // Format the display content
+                    listItem.innerHTML = `
+                        <strong>${student.name}</strong>
+                        <span>ID: ${student.studentId} | Major: ${student.major}</span>
+                        <span>Email: ${student.email}</span>
+                    `;
+                    
+                    studentListElement.appendChild(listItem);
+                });
+            }, (error) => {
+                console.error("Error reading database:", error);
+                studentListElement.innerHTML = `<li class="student-item" style="background-color:#ffebeb; border-left-color:#dc3545;">
+                    Error loading data: ${error.message}. Please check your database rules.
+                </li>`;
+            });
+
+        } catch (e) {
+            console.error("Firebase Initialization Error:", e);
+            showMessage("Initialization failed. Check API keys in the code.", true);
+        }
+    </script>
+</body>
+</html>
