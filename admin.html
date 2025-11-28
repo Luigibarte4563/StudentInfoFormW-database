@@ -1,208 +1,552 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Student Management</title>
-<!-- Import Firebase SDKs for App and Realtime Database (using version 8.10.0 for stability) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<style>
-    /* Admin App Styling */
-    body { font-family: 'Segoe UI', sans-serif; display:flex; flex-direction:column; align-items:center; gap:20px; padding:20px; background:#f0f2f5; min-height:100vh;}
-    .container { width:100%; max-width:700px; padding:25px; border-radius:12px; background:white; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
-    h2 { margin-bottom:20px; color:#333; font-size:1.5rem; border-bottom:3px solid #007bff; padding-bottom:5px; }
-    ul { list-style:none; padding:0; }
-    .student-item { 
-        padding:15px; 
-        margin-bottom:10px; 
-        background:#e9f5ff; 
-        border-left:5px solid #ffc107; /* Default: Pending */
-        border-radius:6px; 
-        display:flex; 
-        justify-content:space-between; 
-        align-items:center; 
-    }
-    .student-item.verified {
-        border-left: 5px solid #28a745; /* Verified: Green */
-    }
-    .student-info { flex:1; }
-    .student-info strong { display:block; font-size:1.1rem; color:#004d99; margin-bottom:5px; }
-    .student-info span { display:block; font-size:0.9rem; color:#666; }
-    
-    /* Button Styling */
-    button { margin-left:10px; padding:8px 14px; border:none; border-radius:5px; cursor:pointer; font-size:0.9rem; font-weight: 600; transition: background-color 0.3s;}
-    
-    /* Toggle Button States */
-    .toggle-btn { background:#ffc107; color:#333; } /* Default: Verify (Orange) */
-    .toggle-btn.is-verified { background:#28a745; color:white; } /* Unverify (Green) */
-    .toggle-btn:hover { opacity: 0.9; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Student Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#4F46E5', // Indigo 600
+                        'primary-dark': '#1F2937', // Gray 800
+                        'accent-yellow': '#FBBF24', // Amber 400
+                        'success-green': '#10B981', // Emerald 500
+                        'danger-red': '#EF4444', // Red 500
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
 
-    .delete-btn { background:#dc3545; color:white; }
-    .delete-btn:hover { background:#c82333; }
-</style>
+        body {
+            /* Subtle background pattern for depth */
+            background-color: #eef2ff;
+            background-image: radial-gradient(#d1d5db 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+
+        /* Custom scrollbar for list */
+        #studentListContainer {
+            max-height: 60vh;
+            overflow-y: auto;
+            min-height: 200px;
+            /* Scrollbar styling for modern browsers */
+            scrollbar-width: thin;
+            scrollbar-color: #4f46e5 #e0e7ff;
+        }
+
+        #studentListContainer::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #studentListContainer::-webkit-scrollbar-track {
+            background: #eef2ff;
+        }
+
+        #studentListContainer::-webkit-scrollbar-thumb {
+            background-color: #818cf8;
+            border-radius: 20px;
+            border: 2px solid #eef2ff;
+        }
+
+        /* Input focus effects */
+        input:focus {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4);
+        }
+
+        /* Dashboard Card Hover Effect */
+        .dashboard-card {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
-<body>
 
-<div class="container">
-    <h2>🧑‍🎓 Admin - Student Management</h2>
-    <ul id="studentList">
-        <li>Loading students...</li>
-    </ul>
-</div>
+<body class="min-h-screen p-4 sm:p-8 flex justify-center items-start pt-10">
 
-<script>
-    // Function to display a non-blocking message (replacing alert/confirm)
-    function showMessage(message, isError = false) {
-        let msgBox = document.getElementById('messageBox');
-        if (!msgBox) {
-            msgBox = document.createElement('div');
-            msgBox.id = 'messageBox';
-            msgBox.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                padding: 15px 25px;
-                border-radius: 8px;
-                color: white;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                z-index: 1000;
-                opacity: 0;
-                transition: opacity 0.5s, transform 0.5s;
-                transform: translateX(100%);
-            `;
-            document.body.appendChild(msgBox);
-        }
-        msgBox.textContent = message;
-        msgBox.style.backgroundColor = isError ? '#dc3545' : '#28a745';
-        
-        setTimeout(() => {
-            msgBox.style.opacity = '1';
-            msgBox.style.transform = 'translateX(0)';
-        }, 10);
-        setTimeout(() => {
-            msgBox.style.opacity = '0';
-            msgBox.style.transform = 'translateX(100%)';
-        }, 3000);
-    }
+    <div id="app-container"
+        class="w-full max-w-6xl bg-white shadow-2xl rounded-2xl overflow-hidden backdrop-blur-sm bg-opacity-95">
 
-    // Firebase configuration
-    const firebaseConfig = {
-        apiKey: "AIzaSyAvQJ5ts2sLNbroz4h1Gcj6Lwq8UNu5KBs",
-        authDomain: "studentinfo-3b29f.firebaseapp.com",
-        databaseURL: "https://studentinfo-3b29f-default-rtdb.firebaseio.com",
-        projectId: "studentinfo-3b29f",
-        storageBucket: "studentinfo-3b29f.firebasestorage.app",
-        messagingSenderId: "890030823969",
-        appId: "1:890030823969:web:1121ffbdc0602e74c32160",
-        measurementId: "G-N50H4H4PS6"
-    };
+        <header class="p-6 bg-primary-dark text-white shadow-xl">
+            <h1 class="text-3xl font-extrabold tracking-tight flex items-center">
+                Student Admin Panel
+            </h1>
+        </header>
 
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    const studentsRef = database.ref('students'); // Path in Realtime Database
+        <nav class="flex border-b border-gray-100 bg-gray-50 p-2">
 
-    const studentList = document.getElementById('studentList');
+            <button id="nav-dashboard"
+                class="flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ease-in-out flex items-center justify-center text-white bg-primary-blue shadow-md hover:bg-indigo-700 mx-1"
+                onclick="switchAdminView('dashboard')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                    <path d="M12 20V10" />
+                    <path d="M18 20V4" />
+                    <path d="M6 20v-4" />
+                </svg>
+                Dashboard
+            </button>
 
-    // --- Core function to toggle verification status ---
-    function toggleVerification(studentId, currentStatus, name) {
-        const newStatus = !currentStatus;
-        studentsRef.child(studentId).update({ verified: newStatus })
-            .then(() => {
-                const action = newStatus ? 'Verified' : 'Unverified';
-                showMessage(`${name} has been successfully ${action}.`);
-            })
-            .catch(err => {
-                console.error(`Error toggling verification for ${studentId}:`, err);
-                showMessage('Error updating verification status.', true);
-            });
-    }
+            <button id="nav-management"
+                class="flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ease-in-out flex items-center justify-center text-gray-700 bg-transparent hover:bg-white hover:text-primary-blue mx-1"
+                onclick="switchAdminView('management')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Student Management
+            </button>
 
-    // --- Render a single student in admin view ---
-    function renderStudentAdmin(studentId, student) {
-        // Find existing list item or create a new one
-        let li = document.getElementById(`student-${studentId}`);
-        const isNew = !li;
-        if (isNew) {
-            li = document.createElement('li');
-            li.id = `student-${studentId}`;
-        }
+        </nav>
 
-        const isVerified = student.verified === true;
-        li.className = isVerified ? 'student-item verified' : 'student-item';
+        <div class="p-6 sm:p-8">
 
-        const statusText = isVerified ? '✅ Verified' : '❌ Not Verified';
-        const buttonText = isVerified ? 'Unverify' : 'Verify';
+            <div id="view-dashboard" class="admin-view-section">
+                <h2 class="text-2xl font-bold text-primary-dark mb-6 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="mr-3 text-primary-blue">
+                        <path d="M3 3v18h18" />
+                        <path d="M18.7 8.3c-.78-.79-2.2-.79-3 0l-5.6 5.6-2.5-2.5c-.78-.79-2.2-.79-3 0" />
+                    </svg>
+                    Enrollment Overview
+                </h2>
 
-        // Student info section
-        li.innerHTML = `
-            <div class="student-info">
-                <strong>${student.name}</strong>
-                <span>ID: ${student.studentId} | Major: ${student.major}</span>
-                <span>Email: ${student.email}</span>
-                <span>Status: ${statusText}</span>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <div class="dashboard-card p-6 bg-white rounded-xl shadow-lg border-b-4 border-primary-blue">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Students</p>
+                        <p id="totalStudents" class="text-4xl font-extrabold text-primary-dark mt-2">--</p>
+                        <p class="text-xs text-gray-400 mt-1">All registered students</p>
+                    </div>
+
+                    <div class="dashboard-card p-6 bg-white rounded-xl shadow-lg border-b-4 border-accent-yellow">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Pending Verification</p>
+                        <p id="pendingStudents" class="text-4xl font-extrabold text-accent-yellow mt-2">--</p>
+                        <p class="text-xs text-gray-400 mt-1">Awaiting admin review</p>
+                    </div>
+
+                    <div class="dashboard-card p-6 bg-white rounded-xl shadow-lg border-b-4 border-success-green">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Verified Students</p>
+                        <p id="verifiedStudents" class="text-4xl font-extrabold text-success-green mt-2">--</p>
+                        <p class="text-xs text-gray-400 mt-1">Approved students</p>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-6 bg-gray-50 rounded-xl shadow-inner border-t border-gray-100">
+                    <h3 class="text-xl font-bold text-primary-dark mb-4">Latest Pending Applications</h3>
+                    <ul id="latestPendingList" class="space-y-3">
+                        <li class="text-gray-500 text-sm">Loading data...</li>
+                    </ul>
+                </div>
             </div>
-            <div class="btn-group" data-id="${studentId}">
-                <!-- Toggle Button -->
-                <button class="toggle-btn ${isVerified ? 'is-verified' : ''}" 
-                        data-action="toggle">
-                    ${buttonText}
-                </button>
-                <!-- Delete button -->
-                <button class="delete-btn" data-action="delete">Delete</button>
-            </div>
-        `;
 
-        if (isNew) {
-            studentList.appendChild(li);
+            <div id="view-management" class="admin-view-section hidden">
+                <h2 class="text-2xl font-bold text-primary-dark mb-6 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="mr-3 text-primary-blue">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    Student Management
+                </h2>
+
+                <div class="mb-6 relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="absolute inset-y-0 left-0 top-1/2 -translate-y-1/2 flex items-center pl-3 text-gray-400">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                    </svg>
+                    <input type="text" id="searchManagement" onkeyup="filterStudents('management')"
+                        class="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-md text-base"
+                        placeholder="Search Students to Manage (Name, ID, Major)...">
+                </div>
+
+                <div id="studentListContainer" class="rounded-xl border border-gray-100 p-2 bg-gray-50 shadow-inner">
+                    <ul id="managementList" class="space-y-4">
+                        <li class="p-4 bg-gray-200 rounded-lg text-gray-600 text-center text-sm">
+                            Real-time data stream: Establishing connection...
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="messageBox"
+        class="fixed bottom-5 right-5 p-4 rounded-xl text-white shadow-2xl transition-all duration-500 ease-in-out transform translate-x-full opacity-0 z-50 min-w-[200px]">
+    </div>
+
+    <script>
+        // Define SVG strings for the icons used in the list view
+        const iconVerified = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle text-success-green"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>';
+        const iconPending = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle text-accent-yellow"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconNotFound = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="block mb-2 mx-auto text-gray-400"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>';
+        const iconSuccessToast = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+        const iconErrorToast = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
+        const iconDelete = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+        const iconVerify = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle"><polyline points="20 6 9 17 4 12"/></svg>';
+        // NEW ICON for Unverify (e.g., a circle with a slash)
+        const iconUnverify = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>';
+
+        // Store all students globally for filtering and dashboard stats
+        let allStudentsData = [];
+
+        // --- UI Logic: Tabs and Messages ---
+
+        /**
+         * Custom toast message box
+         */
+        function showMessage(message, isError = false) {
+            const msgBox = document.getElementById('messageBox');
+            const icon = isError ? iconErrorToast : iconSuccessToast;
+
+            // Reset classes
+            msgBox.className = 'fixed bottom-5 right-5 p-4 rounded-xl text-white shadow-2xl transition-all duration-500 ease-in-out z-50 min-w-[200px] flex items-center';
+
+            if (isError) {
+                msgBox.classList.add('bg-danger-red', 'border-2', 'border-red-400');
+            } else {
+                msgBox.classList.add('bg-success-green', 'border-2', 'border-green-400');
+            }
+
+            msgBox.innerHTML = `${icon} <span>${message}</span>`;
+
+            // Show the message
+            setTimeout(() => {
+                msgBox.classList.remove('translate-x-full', 'opacity-0');
+                msgBox.classList.add('translate-x-0', 'opacity-100');
+            }, 10);
+
+            // Hide the message after 4 seconds
+            setTimeout(() => {
+                msgBox.classList.remove('translate-x-0', 'opacity-100');
+                msgBox.classList.add('translate-x-full', 'opacity-0');
+            }, 4000);
         }
 
-        // Attach event listeners to the new buttons
-        const btnGroup = li.querySelector('.btn-group');
-        const toggleBtn = btnGroup.querySelector('[data-action="toggle"]');
-        const deleteBtn = btnGroup.querySelector('[data-action="delete"]');
+        /**
+         * Toggles the visible section (Dashboard or Management) and updates navigation styling.
+         */
+        function switchAdminView(viewName) {
+            const views = {
+                'dashboard': document.getElementById('view-dashboard'),
+                'management': document.getElementById('view-management'),
+                // 'form' is removed
+            };
+            const navs = {
+                'dashboard': document.getElementById('nav-dashboard'),
+                'management': document.getElementById('nav-management'),
+                // 'form' is removed
+            };
 
-        // Handle verification toggle
-        toggleBtn.onclick = () => {
-            toggleVerification(studentId, isVerified, student.name);
+            const activeClasses = ['bg-primary-blue', 'text-white', 'shadow-md', 'hover:bg-indigo-700'];
+            const inactiveClasses = ['bg-transparent', 'text-gray-700', 'hover:text-primary-blue', 'hover:bg-white', 'shadow-none'];
+
+            for (const view in views) {
+                if (view === viewName) {
+                    views[view].classList.remove('hidden');
+                    navs[view].classList.add(...activeClasses);
+                    navs[view].classList.remove(...inactiveClasses);
+                } else {
+                    views[view].classList.add('hidden');
+                    navs[view].classList.add(...inactiveClasses);
+                    navs[view].classList.remove(...activeClasses);
+                }
+            }
+        }
+
+        // --- Firebase Configuration and Initialization ---
+        const firebaseConfig = {
+            // NOTE: Replace this with your actual Firebase Configuration!
+            apiKey: "AIzaSyAvQJ5ts2sLNbroz4h1Gcj6Lwq8UNu5KBs",
+            authDomain: "studentinfo-3b29f.firebaseapp.com",
+            databaseURL: "https://studentinfo-3b29f-default-rtdb.firebaseio.com",
+            projectId: "studentinfo-3b29f",
+            storageBucket: "studentinfo-3b29f.firebasestorage.app",
+            messagingSenderId: "890030823969",
+            appId: "1:890030823969:web:1121ffbdc0602e74c32160",
+            measurementId: "G-N50H4H4PS6"
         };
 
-        // Handle delete action (no confirmation needed to comply with rules)
-        deleteBtn.onclick = () => {
-            studentsRef.child(studentId).remove()
+        let studentsRef;
+
+        try {
+            const app = firebase.initializeApp(firebaseConfig);
+            const database = app.database();
+            studentsRef = database.ref('students');
+        } catch (e) {
+            console.error("Firebase Initialization Error:", e);
+            showMessage("Initialization failed. Check console for database issues.", true);
+        }
+
+        // --- 2. Admin Actions: Verify, Unverify, and Delete ---
+
+        /**
+         * Updates the 'verified' status of a student to TRUE.
+         */
+        window.verifyStudent = function (studentKey, studentName) {
+            if (!studentsRef) return showMessage("Database error. Cannot update.", true);
+            studentsRef.child(studentKey).update({ verified: true })
                 .then(() => {
-                    showMessage(`Successfully deleted ${student.name}.`);
+                    showMessage(`${iconVerify} ${studentName} verified successfully!`, false);
                 })
-                .catch(err => {
-                    console.error('Error deleting:', err);
-                    showMessage('Error deleting student record.', true);
+                .catch(error => {
+                    console.error('Error verifying student:', error);
+                    showMessage('Error verifying student.', true);
                 });
-        };
-    }
-
-    // --- Listen for realtime updates ---
-    studentsRef.on('value', snapshot => {
-        studentList.innerHTML = ''; // Clear current list (or efficiently update/remove existing)
-        
-        if (!snapshot.exists()) {
-            studentList.innerHTML = '<li>No students found.</li>';
-            return;
         }
 
-        const studentsData = snapshot.val();
-        
-        // Render or update each student
-        for (const studentId in studentsData) {
-            renderStudentAdmin(studentId, studentsData[studentId]);
+        /**
+         * NEW: Updates the 'verified' status of a student to FALSE.
+         */
+        window.unverifyStudent = function (studentKey, studentName) {
+            if (!studentsRef) return showMessage("Database error. Cannot update.", true);
+            if (!confirm(`Are you sure you want to unverify ${studentName}? This will reset their status to Pending.`)) {
+                return;
+            }
+            studentsRef.child(studentKey).update({ verified: false })
+                .then(() => {
+                    // Using the pending icon for the unverify success message
+                    showMessage(`${iconPending} ${studentName} status reset to Pending.`, true); // Using true for error style (Red) for attention/reversion
+                })
+                .catch(error => {
+                    console.error('Error unverifying student:', error);
+                    showMessage('Error unverifying student.', true);
+                });
         }
-    }, error => {
-        console.error('Error reading Firebase data:', error);
-        studentList.innerHTML = `<li class="student-item" style="background:#ffebeb; border-left-color:#dc3545;">
-            Error loading data: ${error.message}
-        </li>`;
-    });
 
-</script>
+        /**
+         * Deletes a student record.
+         */
+        window.deleteStudent = function (studentKey, studentName) {
+            if (!studentsRef) return showMessage("Database error. Cannot delete.", true);
+            if (!confirm(`Are you sure you want to delete ${studentName}? This action is irreversible.`)) {
+                return;
+            }
+            studentsRef.child(studentKey).remove()
+                .then(() => {
+                    showMessage(`${iconDelete} ${studentName} deleted successfully.`, false);
+                })
+                .catch(error => {
+                    console.error('Error deleting student:', error);
+                    showMessage('Error deleting student.', true);
+                });
+        }
 
+
+        // --- 3. Real-Time List Display, Filtering, and Dashboard Updates ---
+
+        /**
+         * Renders the student list for the Management view. Includes admin actions.
+         */
+        function renderManagementList(studentsToDisplay) {
+            const studentListElement = document.getElementById('managementList');
+            studentListElement.innerHTML = ''; // Clear the current list
+
+            if (studentsToDisplay.length === 0) {
+                studentListElement.innerHTML = `
+                    <li class="p-6 bg-white rounded-xl text-gray-700 text-center shadow-inner border border-yellow-200">
+                        ${iconNotFound}
+                        No students found matching your search criteria.
+                    </li>
+                `;
+                return;
+            }
+
+            studentsToDisplay.forEach((student) => {
+                const isVerified = student.data.verified === true;
+                const listItem = document.createElement('li');
+
+                const verifiedClass = isVerified
+                    ? 'border-l-4 border-success-green bg-white'
+                    : 'border-l-4 border-accent-yellow bg-white';
+
+                const badgeClass = isVerified
+                    ? 'bg-success-green/20 text-success-green font-bold'
+                    : 'bg-accent-yellow/20 text-yellow-800 font-bold';
+
+                const icon = isVerified ? iconVerified : iconPending;
+                const badgeText = isVerified ? 'VERIFIED' : 'PENDING';
+
+                // Admin Action Buttons
+                // VERIFY or UNVERIFY button, depending on current status
+                const verifyOrUnverifyButton = isVerified
+                    ? `<button onclick="unverifyStudent('${student.key}', '${student.data.name.replace(/'/g, "\\'")}')" class="py-2 px-3 text-sm font-semibold rounded-lg bg-red-500 text-white hover:bg-red-700 transition duration-150 flex items-center">
+                        ${iconUnverify} <span class="ml-1">Unverify</span>
+                        </button>`
+                    : `<button onclick="verifyStudent('${student.key}', '${student.data.name.replace(/'/g, "\\'")}')" class="py-2 px-3 text-sm font-semibold rounded-lg bg-success-green text-white hover:bg-green-700 transition duration-150 flex items-center">
+                        ${iconVerify} <span class="ml-1">Verify</span>
+                        </button>`;
+
+                const deleteButton = `<button onclick="deleteStudent('${student.key}', '${student.data.name.replace(/'/g, "\\'")}')" class="py-2 px-3 text-sm font-semibold rounded-lg bg-danger-red text-white hover:bg-red-700 transition duration-150 ml-2 flex items-center">
+                    ${iconDelete} <span class="ml-1">Delete</span>
+                </button>`;
+
+
+                listItem.className = `p-4 rounded-xl shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.005] ${verifiedClass}`;
+
+                listItem.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                             <strong class="text-xl text-primary-dark font-semibold">${student.data.name}</strong>
+                             <span class="ml-3 inline-flex items-center px-3 py-1 text-xs rounded-full ${badgeClass}">
+                                 ${icon} <span class="ml-1">${badgeText}</span>
+                            </span>
+                        </div>
+                        <div class="flex items-center">
+                            ${verifyOrUnverifyButton}
+                            ${deleteButton}
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 text-sm text-gray-600 mt-2 border-t pt-2 border-gray-100">
+                        <p class="truncate">
+                            <span class="font-medium text-gray-500">ID:</span> 
+                            <span class="font-mono text-primary-blue">${student.data.studentId}</span>
+                        </p>
+                        <p class="truncate text-right">
+                            <span class="font-medium text-gray-500">Major:</span> 
+                            <span class="text-primary-dark font-medium">${student.data.major}</span>
+                        </p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 truncate">
+                        ${student.data.email}
+                    </p>
+                `;
+
+                studentListElement.appendChild(listItem);
+            });
+        }
+
+        /**
+         * Filters the global student list based on the search input value and calls the renderer.
+         */
+        window.filterStudents = function () { // Made global to be callable from HTML onkeyup
+            const searchInput = document.getElementById('searchManagement');
+            const query = searchInput.value.toLowerCase().trim();
+
+            let studentsToRender = allStudentsData;
+
+            if (query) {
+                studentsToRender = allStudentsData.filter(student => {
+                    const data = student.data;
+                    return (
+                        data.name.toLowerCase().includes(query) ||
+                        data.studentId.toLowerCase().includes(query) ||
+                        data.major.toLowerCase().includes(query) ||
+                        data.email.toLowerCase().includes(query)
+                    );
+                });
+            }
+
+            renderManagementList(studentsToRender);
+        }
+
+        /**
+         * Updates the Dashboard Cards with current statistics.
+         */
+        function updateDashboardStats() {
+            const total = allStudentsData.length;
+            const verified = allStudentsData.filter(s => s.data.verified === true).length;
+            const pending = total - verified;
+
+            document.getElementById('totalStudents').textContent = total;
+            document.getElementById('pendingStudents').textContent = pending;
+            document.getElementById('verifiedStudents').textContent = verified;
+
+            // Update Latest Pending Applications
+            const latestPending = allStudentsData
+                .filter(s => s.data.verified === false)
+                .slice(0, 5); // Get the 5 newest pending (since data is sorted newest first)
+
+            const listElement = document.getElementById('latestPendingList');
+            listElement.innerHTML = '';
+
+            if (latestPending.length === 0) {
+                listElement.innerHTML = '<li class="text-gray-500 italic">No pending applications right now. Great job!</li>';
+                return;
+            }
+
+            latestPending.forEach(student => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border-l-4 border-accent-yellow';
+                li.innerHTML = `
+                    <div class="text-sm">
+                        <span class="font-semibold text-primary-dark">${student.data.name}</span> 
+                        <span class="text-gray-500 ml-2">(${student.data.major})</span>
+                    </div>
+                    <button onclick="verifyStudent('${student.key}', '${student.data.name.replace(/'/g, "\\'")}')" class="py-1 px-3 text-xs font-bold rounded bg-success-green text-white hover:bg-green-700 transition flex items-center">
+                        ${iconVerify} <span class="ml-1">Verify</span>
+                    </button>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+
+        // Setup Real-Time Listener
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize view to dashboard first
+            switchAdminView('dashboard');
+
+            if (studentsRef) {
+                // Listen for value changes at the 'students' reference
+                studentsRef.on('value', (snapshot) => {
+                    const tempStudents = [];
+
+                    if (snapshot.exists()) {
+                        // Iterate through the snapshot and populate the temporary array
+                        snapshot.forEach((childSnapshot) => {
+                            const studentKey = childSnapshot.key;
+                            const studentData = childSnapshot.val();
+                            tempStudents.push({
+                                key: studentKey,
+                                data: studentData
+                            });
+                        });
+
+                        // Sort by timestamp (newest first)
+                        tempStudents.sort((a, b) => (new Date(b.data.timestamp) - new Date(a.data.timestamp)));
+                    }
+
+                    // Update the global student data array
+                    allStudentsData = tempStudents;
+
+                    // 1. Update Dashboard
+                    updateDashboardStats();
+
+                    // 2. Re-filter and render the Management list
+                    filterStudents();
+
+                }, (error) => {
+                    console.error("Error reading database:", error);
+                    showMessage(`Error loading data: ${error.message}`, true);
+                });
+            }
+        });
+    </script>
 </body>
+
 </html>
