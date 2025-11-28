@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Enrollment Form</title>
-    <!-- Load Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configure Tailwind for the Inter font and custom theme colors -->
     <script>
         tailwind.config = {
             theme: {
@@ -58,7 +56,6 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4);
         }
     </style>
-    <!-- Import Firebase SDKs for Realtime Database (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
@@ -66,22 +63,19 @@
 
     <div id="app-container" class="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden backdrop-blur-sm bg-opacity-95">
         
-        <!-- Header and Navigation -->
         <header class="p-6 bg-primary-dark text-white shadow-xl">
-            <h1 class="text-3xl font-extrabold tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Student Enrollment Form
             </h1>
         </header>
         
         <nav class="flex border-b border-gray-100 bg-gray-50 p-2">
-            <!-- New Application Button with File Text Icon (replacing ✍️) -->
             <button id="nav-form" 
                     class="flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ease-in-out flex items-center justify-center text-white bg-primary-blue shadow-md hover:bg-indigo-700 mx-1" 
                     onclick="switchView('form')">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
                 New Application
             </button>
-            <!-- Public Roster Button with Users Icon (replacing 🧑‍🎓) -->
             <button id="nav-list" 
                     class="flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ease-in-out flex items-center justify-center text-gray-700 bg-transparent hover:bg-white hover:text-primary-blue mx-1" 
                     onclick="switchView('list')">
@@ -92,12 +86,10 @@
 
         <div class="p-6 sm:p-8">
 
-            <!-- 1. Student Enrollment Form View -->
             <div id="view-form" class="view-section">
-                <h2 class="text-2xl font-bold text-primary-dark mb-6">Submit Your Enrollment Application</h2>
+                <h2 class="text-xl sm:text-2xl font-bold text-primary-dark mb-6">Submit Your Enrollment Application</h2>
                 <form id="studentForm" class="space-y-6">
                     
-                    <!-- Full Name -->
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                         <input type="text" id="name" required 
@@ -106,14 +98,12 @@
                     </div>
 
                     <div class="grid md:grid-cols-2 gap-6">
-                        <!-- Student ID -->
                         <div>
                             <label for="studentId" class="block text-sm font-medium text-gray-700 mb-1">Student ID (Unique)</label>
                             <input type="text" id="studentId" required 
                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-sm" 
                                    placeholder="e.g., 34-0420-143">
                         </div>
-                        <!-- Email Address -->
                         <div>
                             <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                             <input type="email" id="email" required 
@@ -122,15 +112,13 @@
                         </div>
                     </div>
                     
-                    <!-- Major/Program -->
                     <div>
                         <label for="major" class="block text-sm font-medium text-gray-700 mb-1">Major/Program</label>
                         <input type="text" id="major" required 
                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-sm" 
-                               placeholder="e.g., Inforamtion Technology">
+                               placeholder="e.g., Information Technology">
                     </div>
                     
-                    <!-- Submission Button -->
                     <button type="submit" 
                             class="w-full py-4 mt-6 bg-primary-blue text-white font-bold rounded-xl text-lg hover:bg-indigo-700 transition duration-300 ease-in-out transform hover:scale-[1.005] shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-primary-blue/50">
                         Enroll Student Now
@@ -138,20 +126,16 @@
                 </form>
             </div>
 
-            <!-- 2. Public Student List View -->
             <div id="view-list" class="view-section hidden">
-                <h2 class="text-2xl font-bold text-primary-dark mb-6">Current Public Student Roster</h2>
+                <h2 class="text-xl sm:text-2xl font-bold text-primary-dark mb-6">Current Public Student Roster</h2>
                 
-                <!-- Search Input -->
                 <div class="mb-6 relative">
-                    <!-- Search Icon (replacing 🔍) -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute inset-y-0 left-0 top-1/2 -translate-y-1/2 flex items-center pl-3 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                     <input type="text" id="searchStudent" onkeyup="filterStudents()" 
                            class="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-4 focus:ring-accent-yellow/30 focus:border-accent-yellow transition duration-200 shadow-md text-base" 
                            placeholder="Search by Name, ID, or Major...">
                 </div>
 
-                <!-- List Container (Scrollable) -->
                 <div id="studentListContainer" class="rounded-xl border border-gray-100 p-2 bg-gray-50 shadow-inner">
                     <ul id="studentList" class="space-y-4">
                         <li class="p-4 bg-gray-200 rounded-lg text-gray-600 text-center text-sm">
@@ -166,7 +150,6 @@
 
     </div>
 
-    <!-- Custom Message Box (Toast) -->
     <div id="messageBox" class="fixed bottom-5 right-5 p-4 rounded-xl text-white shadow-2xl transition-all duration-500 ease-in-out transform translate-x-full opacity-0 z-50 min-w-[200px]"></div>
 
     <script>
@@ -349,18 +332,18 @@
                 listItem.className = `p-4 rounded-xl shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.01] ${verifiedClass} cursor-pointer`;
                 
                 listItem.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <strong class="text-xl text-primary-dark font-semibold">${student.data.name}</strong>
-                        <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${badgeClass}">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
+                        <strong class="text-xl text-primary-dark font-semibold mb-1 sm:mb-0">${student.data.name}</strong>
+                        <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${badgeClass} self-start sm:self-auto">
                             ${icon} <span class="ml-1">${badgeText}</span>
                         </span>
                     </div>
-                    <div class="grid grid-cols-2 text-sm text-gray-600">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 text-sm text-gray-600 gap-y-1"> 
                         <p class="truncate">
                             <span class="font-medium text-gray-500">ID:</span> 
                             <span class="font-mono text-primary-blue">${student.data.studentId}</span>
                         </p>
-                        <p class="truncate text-right">
+                        <p class="truncate sm:text-right">
                             <span class="font-medium text-gray-500">Major:</span> 
                             <span class="text-primary-dark font-medium">${student.data.major}</span>
                         </p>
