@@ -3,207 +3,252 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Info Submission and Public List (Read-Only Status)</title>
-    <!-- Import Firebase SDKs for App and Realtime Database (using version 8.10.0 for stability) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <title>Student Enrollment Form</title>
+    <!-- Load Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for the Inter font and custom theme colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#4F46E5', // Indigo 600
+                        'primary-dark': '#1F2937', // Gray 800
+                        'accent-yellow': '#FBBF24', // Amber 400
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
     <style>
-        /* General Styling and Layout */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            padding: 20px;
-            background-color: #f0f2f5;
-            min-height: 100vh;
-        }
-        .container {
-            flex: 1;
-            padding: 25px;
-            border-radius: 12px;
-            background-color: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-        }
-        .list-container {
-            max-width: 700px;
-        }
-        h2 {
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 10px;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.8rem;
+            /* Subtle background pattern for depth */
+            background-color: #eef2ff;
+            background-image: radial-gradient(#d1d5db 1px, transparent 0);
+            background-size: 20px 20px;
         }
 
-        /* Form Styling */
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: 600;
-            color: #555;
-            font-size: 0.95rem;
+        /* Custom scrollbar for list */
+        #studentListContainer {
+            max-height: 60vh;
+            overflow-y: auto;
+            min-height: 200px;
+            /* Scrollbar styling for modern browsers */
+            scrollbar-width: thin;
+            scrollbar-color: #4f46e5 #e0e7ff;
         }
-        input[type="text"], input[type="email"] {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            box-sizing: border-box;
-            transition: border-color 0.3s;
+        #studentListContainer::-webkit-scrollbar {
+            width: 8px;
         }
+        #studentListContainer::-webkit-scrollbar-track {
+            background: #eef2ff;
+        }
+        #studentListContainer::-webkit-scrollbar-thumb {
+            background-color: #818cf8;
+            border-radius: 20px;
+            border: 2px solid #eef2ff;
+        }
+
+        /* Input hover effects */
         input:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
-        }
-        button[type="submit"] {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 20px;
-            margin-top: 25px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s, transform 0.1s;
-        }
-        button[type="submit"]:hover {
-            background-color: #0056b3;
-            transform: translateY(-1px);
-        }
-
-        /* List Styling & Verification Status */
-        #studentList {
-            list-style: none;
-            padding: 0;
-        }
-        .student-item {
-            padding: 15px;
-            margin-bottom: 10px;
-            background-color: #e9f5ff;
-            border-left: 5px solid #ffc107; /* Default: Pending (Yellow/Orange) */
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-        .student-item.verified {
-            border-left: 5px solid #28a745; /* Verified (Green) */
-            background-color: #e9fff5;
-        }
-        .student-item strong {
-            display: block;
-            font-size: 1.1rem;
-            color: #004d99;
-            margin-bottom: 5px;
-        }
-        .student-item span {
-            display: block;
-            font-size: 0.9rem;
-            color: #666;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            margin-top: 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        .status-verified {
-            background-color: #28a745;
-            color: white;
-        }
-        .status-pending {
-            background-color: #ffc107;
-            color: #333;
-        }
-
-        /* Responsiveness */
-        @media (max-width: 900px) {
-            body {
-                flex-direction: column;
-                gap: 30px;
-            }
-            .container {
-                max-width: 100%;
-            }
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4);
         }
     </style>
+    <!-- Import Firebase SDKs for Realtime Database (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
-<body>
+<body class="min-h-screen p-4 sm:p-8 flex justify-center items-start pt-10">
 
-    <!-- 1. Submission Form Side -->
-    <div class="container form-container">
-        <h2>🧑‍🎓 Student Enrollment Form</h2>
-        <form id="studentForm">
-            <label for="name">Full Name:</label>
-            <input type="text" id="name" required>
+    <div id="app-container" class="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden backdrop-blur-sm bg-opacity-95">
+        
+        <!-- Header and Navigation -->
+        <header class="p-6 bg-primary-dark text-white shadow-xl">
+            <h1 class="text-3xl font-extrabold tracking-tight">
+                Student Enrollment Form
+            </h1>
+        </header>
+        
+        <nav class="flex border-b border-gray-100 bg-gray-50 p-2">
+            <!-- New Application Button with File Text Icon (replacing ✍️) -->
+            <button id="nav-form" 
+                    class="flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ease-in-out flex items-center justify-center text-white bg-primary-blue shadow-md hover:bg-indigo-700 mx-1" 
+                    onclick="switchView('form')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+                New Application
+            </button>
+            <!-- Public Roster Button with Users Icon (replacing 🧑‍🎓) -->
+            <button id="nav-list" 
+                    class="flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ease-in-out flex items-center justify-center text-gray-700 bg-transparent hover:bg-white hover:text-primary-blue mx-1" 
+                    onclick="switchView('list')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Public Roster
+            </button>
+        </nav>
 
-            <label for="studentId">Student ID:</label>
-            <input type="text" id="studentId" required>
+        <div class="p-6 sm:p-8">
 
-            <label for="email">Email:</label>
-            <input type="email" id="email" required>
+            <!-- 1. Student Enrollment Form View -->
+            <div id="view-form" class="view-section">
+                <h2 class="text-2xl font-bold text-primary-dark mb-6">Submit Your Enrollment Application</h2>
+                <form id="studentForm" class="space-y-6">
+                    
+                    <!-- Full Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input type="text" id="name" required 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-sm" 
+                               placeholder="e.g., lowigi varti">
+                    </div>
 
-            <label for="major">Major/Program:</label>
-            <input type="text" id="major" required>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Student ID -->
+                        <div>
+                            <label for="studentId" class="block text-sm font-medium text-gray-700 mb-1">Student ID (Unique)</label>
+                            <input type="text" id="studentId" required 
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-sm" 
+                                   placeholder="e.g., 34-0420-143">
+                        </div>
+                        <!-- Email Address -->
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <input type="email" id="email" required 
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-sm" 
+                                   placeholder="lowigi@gmail.com">
+                        </div>
+                    </div>
+                    
+                    <!-- Major/Program -->
+                    <div>
+                        <label for="major" class="block text-sm font-medium text-gray-700 mb-1">Major/Program</label>
+                        <input type="text" id="major" required 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-primary-blue/30 focus:border-primary-blue transition duration-200 shadow-sm" 
+                               placeholder="e.g., Inforamtion Technology">
+                    </div>
+                    
+                    <!-- Submission Button -->
+                    <button type="submit" 
+                            class="w-full py-4 mt-6 bg-primary-blue text-white font-bold rounded-xl text-lg hover:bg-indigo-700 transition duration-300 ease-in-out transform hover:scale-[1.005] shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-primary-blue/50">
+                        Enroll Student Now
+                    </button>
+                </form>
+            </div>
 
-            <button type="submit">Submit Enrollment</button>
-        </form>
+            <!-- 2. Public Student List View -->
+            <div id="view-list" class="view-section hidden">
+                <h2 class="text-2xl font-bold text-primary-dark mb-6">Current Public Student Roster</h2>
+                
+                <!-- Search Input -->
+                <div class="mb-6 relative">
+                    <!-- Search Icon (replacing 🔍) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute inset-y-0 left-0 top-1/2 -translate-y-1/2 flex items-center pl-3 text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" id="searchStudent" onkeyup="filterStudents()" 
+                           class="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-4 focus:ring-accent-yellow/30 focus:border-accent-yellow transition duration-200 shadow-md text-base" 
+                           placeholder="Search by Name, ID, or Major...">
+                </div>
+
+                <!-- List Container (Scrollable) -->
+                <div id="studentListContainer" class="rounded-xl border border-gray-100 p-2 bg-gray-50 shadow-inner">
+                    <ul id="studentList" class="space-y-4">
+                        <li class="p-4 bg-gray-200 rounded-lg text-gray-600 text-center text-sm">
+                            Real-time data stream: Establishing connection...
+                        </li>
+                    </ul>
+                </div>
+                
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- 2. Already Submitted List Side (Public Display) -->
-    <div class="container list-container">
-        <h2>✅ Public Enrollment List (Status: Read-Only)</h2>
-        <ul id="studentList">
-            <!-- Student data will be loaded here by JavaScript -->
-            <li>Loading submitted students in real-time...</li>
-        </ul>
-    </div>
+    <!-- Custom Message Box (Toast) -->
+    <div id="messageBox" class="fixed bottom-5 right-5 p-4 rounded-xl text-white shadow-2xl transition-all duration-500 ease-in-out transform translate-x-full opacity-0 z-50 min-w-[200px]"></div>
 
     <script>
-        // Use a simple custom message box mechanism instead of alert()
-        function showMessage(message, isError = false) {
-            let msgBox = document.getElementById('messageBox');
-            if (!msgBox) {
-                msgBox = document.createElement('div');
-                msgBox.id = 'messageBox';
-                msgBox.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    padding: 15px 25px;
-                    border-radius: 8px;
-                    color: white;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                    z-index: 1000;
-                    opacity: 0;
-                    transition: opacity 0.5s, transform 0.5s;
-                    transform: translateX(100%);
-                `;
-                document.body.appendChild(msgBox);
-            }
+        // Define SVG strings for the icons used in the list view (replacing emojis)
+        const iconVerified = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>';
+        const iconPending = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="inline-block align-middle text-yellow-800"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconNotFound = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="block mb-2 mx-auto text-gray-400"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>';
 
+        // Store all students globally for filtering
+        let allStudentsData = [];
+        
+        // --- UI Logic: Tabs and Messages ---
+
+        /**
+         * Custom toast message box instead of alert()
+         */
+        function showMessage(message, isError = false) {
+            const msgBox = document.getElementById('messageBox');
+            
+            // Reset classes
+            msgBox.className = 'fixed bottom-5 right-5 p-4 rounded-xl text-white shadow-2xl transition-all duration-500 ease-in-out z-50 min-w-[200px]';
+            
+            if (isError) {
+                msgBox.classList.add('bg-red-600', 'border-2', 'border-red-400');
+            } else {
+                msgBox.classList.add('bg-green-600', 'border-2', 'border-green-400');
+            }
+            
             msgBox.textContent = message;
-            msgBox.style.backgroundColor = isError ? '#dc3545' : '#28a745';
             
             // Show the message
             setTimeout(() => {
-                msgBox.style.opacity = '1';
-                msgBox.style.transform = 'translateX(0)';
+                msgBox.classList.remove('translate-x-full', 'opacity-0');
+                msgBox.classList.add('translate-x-0', 'opacity-100');
             }, 10);
 
-            // Hide the message after 3 seconds
+            // Hide the message after 4 seconds
             setTimeout(() => {
-                msgBox.style.opacity = '0';
-                msgBox.style.transform = 'translateX(100%)';
-            }, 3000);
+                msgBox.classList.remove('translate-x-0', 'opacity-100');
+                msgBox.classList.add('translate-x-full', 'opacity-0');
+            }, 4000);
         }
 
-        // --- Firebase Configuration and Initialization ---
+        /**
+         * Toggles the visible section (Form or List) and updates the navigation styling.
+         */
+        function switchView(viewName) {
+            const formView = document.getElementById('view-form');
+            const listView = document.getElementById('view-list');
+            const navForm = document.getElementById('nav-form');
+            const navList = document.getElementById('nav-list');
+
+            const activeClasses = ['bg-primary-blue', 'text-white', 'shadow-md', 'hover:bg-indigo-700'];
+            const inactiveClasses = ['bg-transparent', 'text-gray-700', 'hover:text-primary-blue', 'hover:bg-white', 'shadow-none'];
+
+            if (viewName === 'form') {
+                formView.classList.remove('hidden');
+                listView.classList.add('hidden');
+
+                // Activate Form Button
+                navForm.classList.add(...activeClasses);
+                navForm.classList.remove(...inactiveClasses);
+                
+                // Deactivate List Button
+                navList.classList.add(...inactiveClasses);
+                navList.classList.remove(...activeClasses);
+                
+            } else if (viewName === 'list') {
+                formView.classList.add('hidden');
+                listView.classList.remove('hidden');
+
+                // Activate List Button
+                navList.classList.add(...activeClasses);
+                navList.classList.remove(...inactiveClasses);
+                
+                // Deactivate Form Button
+                navForm.classList.add(...inactiveClasses);
+                navForm.classList.remove(...activeClasses);
+            }
+        }
+
+        // --- Firebase Configuration and Initialization (Original Logic Retained) ---
         const firebaseConfig = {
             apiKey: "AIzaSyAvQJ5ts2sLNbroz4h1Gcj6Lwq8UNu5KBs",
             authDomain: "studentinfo-3b29f.firebaseapp.com",
@@ -220,24 +265,20 @@
         try {
             const app = firebase.initializeApp(firebaseConfig);
             const database = app.database();
-            // We use 'students' as the public collection path in the Realtime Database
-            studentsRef = database.ref('students'); 
-
+            // Using 'students' path as per the original code
+            studentsRef = database.ref('students');
         } catch (e) {
             console.error("Firebase Initialization Error:", e);
-            const listElement = document.getElementById('studentList');
-            if (listElement) {
-                 listElement.innerHTML = `<li class="student-item" style="background-color:#ffebeb; border-left-color:#dc3545;">
-                    Initialization failed. Check console for details.
-                </li>`;
-            }
-            showMessage("Initialization failed. Check console.", true);
+            showMessage("Initialization failed. Check console for database issues.", true);
         }
 
-        // --- 1. Form Submission Logic ---
+        // --- 1. Form Submission Logic (Data Persistence) ---
         document.getElementById('studentForm').addEventListener('submit', function(e) {
             e.preventDefault(); 
-            if (!studentsRef) return; // Guard clause if initialization failed
+            if (!studentsRef) {
+                showMessage("Database connection failed. Cannot submit.", true);
+                return; 
+            }
 
             const name = document.getElementById('name').value.trim();
             const studentId = document.getElementById('studentId').value.trim();
@@ -245,25 +286,25 @@
             const major = document.getElementById('major').value.trim();
 
             if (!name || !studentId || !email || !major) {
-                showMessage('Please fill in all fields.', true);
+                showMessage('Please fill in all enrollment fields.', true);
                 return;
             }
 
-            // Create a student object, default 'verified' to false
             const studentData = {
                 name: name,
                 studentId: studentId,
                 email: email,
                 major: major,
-                verified: false, // New field, defaults to pending
+                verified: false, // Default status
                 timestamp: new Date().toISOString()
             };
 
-            // Save data to Firebase Realtime Database
             studentsRef.push(studentData)
                 .then(() => {
-                    showMessage('Student data submitted successfully! Status is Pending.');
-                    document.getElementById('studentForm').reset(); // Clear the form
+                    showMessage(`Enrollment successful for ${name}. Status: Pending Verification.`, false);
+                    document.getElementById('studentForm').reset();
+                    // Switch to list view after submission
+                    switchView('list');
                 })
                 .catch((error) => {
                     console.error('Error submitting data: ', error);
@@ -271,49 +312,132 @@
                 });
         });
 
-        // --- 2. Real-Time List Display Logic ---
-        document.addEventListener('DOMContentLoaded', () => {
+        // --- 2. Real-Time List Display & Filtering Logic ---
+        
+        /**
+         * Renders the student list based on the provided filtered array.
+         */
+        function renderStudentList(studentsToDisplay) {
             const studentListElement = document.getElementById('studentList');
+            studentListElement.innerHTML = ''; // Clear the current list
 
+            if (studentsToDisplay.length === 0) {
+                studentListElement.innerHTML = `
+                    <li class="p-6 bg-white rounded-xl text-gray-700 text-center shadow-inner border border-yellow-200">
+                        ${iconNotFound}
+                        No students found matching your search criteria.
+                    </li>
+                `;
+                return;
+            }
+
+            studentsToDisplay.forEach((student) => {
+                const isVerified = student.data.verified === true;
+                const listItem = document.createElement('li');
+                
+                const verifiedClass = isVerified 
+                    ? 'border-l-4 border-green-500 bg-white hover:shadow-green-100' 
+                    : 'border-l-4 border-accent-yellow bg-white hover:shadow-yellow-100';
+                
+                const badgeClass = isVerified 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-accent-yellow/20 text-yellow-800';
+                
+                const icon = isVerified ? iconVerified : iconPending;
+                const badgeText = isVerified ? 'VERIFIED' : 'PENDING';
+
+                listItem.className = `p-4 rounded-xl shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.01] ${verifiedClass} cursor-pointer`;
+                
+                listItem.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <strong class="text-xl text-primary-dark font-semibold">${student.data.name}</strong>
+                        <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${badgeClass}">
+                            ${icon} <span class="ml-1">${badgeText}</span>
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 text-sm text-gray-600">
+                        <p class="truncate">
+                            <span class="font-medium text-gray-500">ID:</span> 
+                            <span class="font-mono text-primary-blue">${student.data.studentId}</span>
+                        </p>
+                        <p class="truncate text-right">
+                            <span class="font-medium text-gray-500">Major:</span> 
+                            <span class="text-primary-dark font-medium">${student.data.major}</span>
+                        </p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 truncate">
+                        ${student.data.email}
+                    </p>
+                `;
+                
+                studentListElement.appendChild(listItem);
+            });
+        }
+        
+        /**
+         * Filters the global student list based on the search input value.
+         */
+        function filterStudents() {
+            const searchInput = document.getElementById('searchStudent');
+            const query = searchInput.value.toLowerCase().trim();
+            
+            if (!query) {
+                renderStudentList(allStudentsData);
+                return;
+            }
+
+            const filteredStudents = allStudentsData.filter(student => {
+                const data = student.data;
+                return (
+                    data.name.toLowerCase().includes(query) ||
+                    data.studentId.toLowerCase().includes(query) ||
+                    data.major.toLowerCase().includes(query) ||
+                    data.email.toLowerCase().includes(query)
+                );
+            });
+
+            renderStudentList(filteredStudents);
+        }
+
+
+        // Setup Real-Time Listener
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize view to form first
+            switchView('form');
+            
             if (studentsRef) {
                 // Listen for value changes at the 'students' reference
                 studentsRef.on('value', (snapshot) => {
-                    studentListElement.innerHTML = ''; // Clear the current list
+                    const tempStudents = [];
 
                     if (!snapshot.exists()) {
-                        studentListElement.innerHTML = '<li class="student-item">No students have been enrolled yet.</li>';
+                        allStudentsData = [];
+                        renderStudentList([]); // Render empty list
                         return;
                     }
 
-                    // Iterate through the snapshot (the collection of all students)
+                    // Iterate through the snapshot and populate the temporary array
                     snapshot.forEach((childSnapshot) => {
-                        const student = childSnapshot.val();
-                        // Check the verified status (defaults to false if not set/old data)
-                        const isVerified = student.verified === true; 
-
-                        const listItem = document.createElement('li');
-                        // Apply the correct class for styling the border color
-                        listItem.className = isVerified ? 'student-item verified' : 'student-item';
-                        
-                        // Set up the status badge for display
-                        const badgeClass = isVerified ? 'status-verified' : 'status-pending';
-                        const badgeText = isVerified ? 'VERIFIED ✅' : 'PENDING 🟡';
-
-                        // Format the display content
-                        listItem.innerHTML = `
-                            <strong>${student.name}</strong>
-                            <span>ID: ${student.studentId} | Major: ${student.major}</span>
-                            <span>Email: ${student.email}</span>
-                            <span class="status-badge ${badgeClass}">${badgeText}</span>
-                        `;
-                        
-                        studentListElement.appendChild(listItem);
+                        const studentKey = childSnapshot.key;
+                        const studentData = childSnapshot.val();
+                        tempStudents.push({
+                            key: studentKey,
+                            data: studentData
+                        });
                     });
+                    
+                    // Sort by timestamp (newest first)
+                    tempStudents.sort((a, b) => (new Date(b.data.timestamp) - new Date(a.data.timestamp)));
+
+                    // Update the global student data array
+                    allStudentsData = tempStudents;
+                    
+                    // Re-filter and render the list
+                    filterStudents();
+
                 }, (error) => {
                     console.error("Error reading database:", error);
-                    studentListElement.innerHTML = `<li class="student-item" style="background-color:#ffebeb; border-left-color:#dc3545;">
-                        Error loading data: ${error.message}. Please check your database connection.
-                    </li>`;
+                    showMessage(`Error loading data: ${error.message}`, true);
                 });
             }
         });
